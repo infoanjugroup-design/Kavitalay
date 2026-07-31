@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -366,9 +367,27 @@
     <div id="adminGate" class="bg-[var(--paper)] rounded-2xl border border-[var(--gold-soft)] shadow-sm p-6 sm:p-10 text-center max-w-md mx-auto">
       <p class="font-deco text-2xl text-[var(--gold)] mb-1">for the keepers of the archive</p>
       <h2 class="font-logo text-3xl text-[var(--accent)] mb-6">व्यवस्थापक प्रवेश</h2>
-      <input id="adminPass" type="password" placeholder="पासकी दर्ज करें" class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)] mb-3" onkeydown="if(event.key==='Enter')adminLogin()">
-      <button onclick="adminLogin()" class="btn-primary w-full py-3 rounded-lg font-section text-lg">प्रवेश करें</button>
-      <p id="adminError" class="text-sm text-red-700 mt-3 hidden">गलत पासकी। पुनः प्रयास करें।</p>
+
+      <!-- Step 1: Email entry -->
+      <div id="adminStepEmail">
+        <label class="font-section text-sm text-[var(--ink)]/70 block mb-1 text-left">ईमेल पता</label>
+        <input id="adminEmail" type="email" placeholder="admin@example.com" class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)] mb-3" onkeydown="if(event.key==='Enter')sendAdminOtp()">
+        <button id="adminSendOtpBtn" onclick="sendAdminOtp()" class="btn-primary w-full py-3 rounded-lg font-section text-lg flex items-center justify-center gap-2">
+          <span id="adminSendOtpBtnText">OTP भेजें</span>
+        </button>
+        <p id="adminEmailError" class="text-sm text-red-700 mt-3 hidden">यह ईमेल अधिकृत नहीं है या भेजने में त्रुटि हुई।</p>
+      </div>
+
+      <!-- Step 2: OTP entry -->
+      <div id="adminStepOtp" class="hidden">
+        <p class="font-section text-sm text-[var(--ink)]/70 mb-3"><span id="adminOtpSentTo"></span> पर भेजा गया 6-अंकीय कोड दर्ज करें</p>
+        <input id="adminOtp" type="text" inputmode="numeric" maxlength="6" placeholder="------" class="w-full font-body text-center tracking-[0.5em] px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)] mb-3" onkeydown="if(event.key==='Enter')verifyAdminOtp()">
+        <button id="adminVerifyOtpBtn" onclick="verifyAdminOtp()" class="btn-primary w-full py-3 rounded-lg font-section text-lg flex items-center justify-center gap-2">
+          <span id="adminVerifyOtpBtnText">सत्यापित करें</span>
+        </button>
+        <p id="adminOtpError" class="text-sm text-red-700 mt-3 hidden">गलत या समाप्त OTP। पुनः प्रयास करें।</p>
+        <button onclick="resetAdminLogin()" class="font-section text-sm text-[var(--ink)]/60 hover:text-[var(--accent)] underline mt-4">दूसरा ईमेल इस्तेमाल करें / पुनः OTP भेजें</button>
+      </div>
     </div>
 
     <div id="adminBoard" class="hidden">
@@ -425,16 +444,20 @@
 /* ============================================================
    CONFIGURATION
    Replace with your deployed Google Apps Script Web App URL.
-   The script must implement doGet (action=getPoems / getPending)
-   and doPost (action=submitPoem / updateStatus / toggleLike).
+   The script must implement:
+     doGet:  action=getPoems | getPending (requires adminEmail of a
+             verified, whitelisted admin)
+     doPost: action=submitPoem | updateStatus | toggleLike |
+             sendAdminOtp | verifyAdminOtp
+   See the accompanying Code.gs for a working reference implementation.
    ============================================================ */
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxDHnuUS00VcKmtw4A1Y9sX5TgZoA_YCaIdAaiAErB1K6yol3_i9itvx6yEopJ20_Vd/exec";
+const GOOGLE_SCRIPT_URL ="https://script.google.com/macros/s/AKfycbxDHnuUS00VcKmtw4A1Y9sX5TgZoA_YCaIdAaiAErB1K6yol3_i9itvx6yEopJ20_Vd/exec";
 
 const CACHE_KEY = "kavya_poems_cache";
 const LIKES_KEY = "kavya_liked_ids";
 const USER_KEY = "kavya_poet_session";
 const ADMIN_SESSION_KEY = "kavya_admin_session";
-const ADMIN_PASSKEY = "admin123";
+const ADMIN_EMAIL_KEY = "kavya_admin_email";
 
 /* ---------------- Global state ---------------- */
 let allPoems = [];          // approved poems (from cache / server)
@@ -463,8 +486,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // 3. Restore poet session UI
   if (currentUser) showPoetPanel();
 
-  // 4. Restore admin session
-  if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "true") {
+  // 4. Restore admin session (valid only if a prior OTP verification succeeded)
+  if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "true" && sessionStorage.getItem(ADMIN_EMAIL_KEY)) {
     document.getElementById("adminGate").classList.add("hidden");
     document.getElementById("adminBoard").classList.remove("hidden");
     fetchPending();
@@ -738,17 +761,35 @@ async function submitPoem(evt) {
   };
 
   try {
-    await fetch(GOOGLE_SCRIPT_URL, {
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
+    if (!res.ok) throw new Error("नेटवर्क त्रुटि (" + res.status + ")");
+
+    // IMPORTANT: previously the response was never read, so a failure on the
+    // Apps Script side (bad sheet name, exception while appending the row,
+    // etc.) still showed the "success" modal even though nothing was saved.
+    // Now we require the backend to confirm the row was actually written.
+    let result;
+    try {
+      result = await res.json();
+    } catch (parseErr) {
+      throw new Error("सर्वर से अमान्य उत्तर मिला — रचना सहेजी नहीं गई हो सकती।");
+    }
+    if (!result || result.success !== true) {
+      throw new Error((result && result.error) || "रचना सहेजने में त्रुटि — कृपया पुनः प्रयास करें।");
+    }
+
     document.getElementById("submitForm").reset();
     document.getElementById("poemAuthor").value = currentUser.name;
     document.getElementById("poemEmail").value = currentUser.email;
     openSuccessModal();
+    // Refresh admin's pending queue if it happens to be open in this session
+    fetchPending();
   } catch (err) {
-    errEl.textContent = "भेजने में समस्या हुई। कृपया पुनः प्रयास करें।";
+    errEl.textContent = "भेजने में समस्या हुई: " + err.message;
     errEl.classList.remove("hidden");
   } finally {
     btn.disabled = false;
@@ -770,24 +811,100 @@ function closeSuccessModal() {
 /* ============================================================
    ADMIN PANEL
    ============================================================ */
-function adminLogin() {
-  const val = document.getElementById("adminPass").value;
-  const errEl = document.getElementById("adminError");
-  if (val !== ADMIN_PASSKEY) {
+async function sendAdminOtp() {
+  const email = document.getElementById("adminEmail").value.trim();
+  const errEl = document.getElementById("adminEmailError");
+  errEl.classList.add("hidden");
+
+  if (!email || !email.includes("@")) {
+    errEl.textContent = "कृपया मान्य ईमेल दर्ज करें।";
     errEl.classList.remove("hidden");
     return;
   }
-  errEl.classList.add("hidden");
-  sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
-  document.getElementById("adminGate").classList.add("hidden");
-  document.getElementById("adminBoard").classList.remove("hidden");
-  fetchPending();
+
+  const btn = document.getElementById("adminSendOtpBtn");
+  const btnText = document.getElementById("adminSendOtpBtnText");
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner inline-block align-middle"></span> <span class="align-middle">भेजा जा रहा है...</span>';
+
+  try {
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "sendAdminOtp", email })
+    });
+    const result = await res.json();
+    if (!result || result.success !== true) {
+      throw new Error((result && result.error) || "OTP भेजने में त्रुटि।");
+    }
+    document.getElementById("adminOtpSentTo").textContent = email;
+    document.getElementById("adminStepEmail").classList.add("hidden");
+    document.getElementById("adminStepOtp").classList.remove("hidden");
+    showToast("OTP भेज दिया गया है — कृपया अपना ईमेल जांचें।");
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = "OTP भेजें";
+  }
 }
+
+async function verifyAdminOtp() {
+  const email = document.getElementById("adminEmail").value.trim();
+  const otp = document.getElementById("adminOtp").value.trim();
+  const errEl = document.getElementById("adminOtpError");
+  errEl.classList.add("hidden");
+
+  if (!otp) {
+    errEl.textContent = "कृपया OTP दर्ज करें।";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const btn = document.getElementById("adminVerifyOtpBtn");
+  const btnText = document.getElementById("adminVerifyOtpBtnText");
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner inline-block align-middle"></span> <span class="align-middle">सत्यापित हो रहा है...</span>';
+
+  try {
+    const res = await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "verifyAdminOtp", email, otp })
+    });
+    const result = await res.json();
+    if (!result || result.success !== true) {
+      throw new Error((result && result.error) || "गलत या समाप्त OTP।");
+    }
+    sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+    sessionStorage.setItem(ADMIN_EMAIL_KEY, email);
+    document.getElementById("adminGate").classList.add("hidden");
+    document.getElementById("adminBoard").classList.remove("hidden");
+    fetchPending();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = "सत्यापित करें";
+  }
+}
+
+function resetAdminLogin() {
+  document.getElementById("adminOtp").value = "";
+  document.getElementById("adminOtpError").classList.add("hidden");
+  document.getElementById("adminStepOtp").classList.add("hidden");
+  document.getElementById("adminStepEmail").classList.remove("hidden");
+}
+
 function adminLogout() {
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  sessionStorage.removeItem(ADMIN_EMAIL_KEY);
   document.getElementById("adminBoard").classList.add("hidden");
   document.getElementById("adminGate").classList.remove("hidden");
-  document.getElementById("adminPass").value = "";
+  resetAdminLogin();
+  document.getElementById("adminEmail").value = "";
 }
 
 async function fetchPending(manual) {
@@ -796,7 +913,8 @@ async function fetchPending(manual) {
   if (manual) list.innerHTML = `<p class="font-section text-center text-[var(--ink)]/50 py-8">लोड हो रहा है...</p>`;
 
   try {
-    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPending`, { method: "GET" });
+    const adminEmail = encodeURIComponent(sessionStorage.getItem(ADMIN_EMAIL_KEY) || "");
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPending&adminEmail=${adminEmail}`, { method: "GET" });
     if (!res.ok) throw new Error("नेटवर्क त्रुटि");
     const data = await res.json();
     pendingPoems = Array.isArray(data) ? data : [];
@@ -844,7 +962,7 @@ async function moderatePoem(id, status, btnEl) {
     await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "updateStatus", id, status })
+      body: JSON.stringify({ action: "updateStatus", id, status, adminEmail: sessionStorage.getItem(ADMIN_EMAIL_KEY) || "" })
     });
 
     // Remove from pending list locally
