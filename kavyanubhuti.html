@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>काव्यानुभूति | Kavyanubhuti — हिन्दी काव्य मंच</title>
+<meta name="description" content="काव्यानुभूति — जहाँ शब्द भाव बनते हैं। एक आधुनिक हिन्दी काव्य प्रकाशन मंच।">
+
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rozha+One&family=Yatra+One&family=Amita:wght@400;700&family=Pinyon+Script&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --canvas:#fcfaf2;
+    --paper:#ffffff;
+    --ink:#2d2d2d;
+    --accent:#78350f;
+    --accent-light:#a35a1f;
+    --gold:#c9a05c;
+    --gold-soft:#e8d9b8;
+    --maroon-deep:#5c1f1f;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--canvas);
+    color:var(--ink);
+    font-family:'Playfair Display', serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .font-logo{font-family:'Rozha One', serif;}
+  .font-section{font-family:'Yatra One', cursive;}
+  .font-verse{font-family:'Amita', cursive; white-space:pre-line;}
+  .font-deco{font-family:'Pinyon Script', cursive;}
+  .font-body{font-family:'Playfair Display', serif;}
+
+  ::selection{background:var(--gold-soft); color:var(--maroon-deep);}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-track{background:var(--canvas);}
+  ::-webkit-scrollbar-thumb{background:var(--gold); border-radius:8px;}
+
+  /* Subtle inked-paper texture using layered radial dots */
+  .paper-texture{
+    background-image: radial-gradient(circle at 1px 1px, rgba(120,53,15,0.05) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+
+  /* Signature: floating quill-ink flourish in hero */
+  .quill-flourish{
+    animation: quillFloat 7s ease-in-out infinite;
+    transform-origin: 60% 60%;
+  }
+  @keyframes quillFloat{
+    0%,100%{ transform: translateY(0) rotate(-3deg); }
+    50%{ transform: translateY(-10px) rotate(2deg); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .quill-flourish{ animation:none; }
+    *{ scroll-behavior:auto !important; }
+  }
+
+  /* Torn / manuscript top edge for poem cards */
+  .verse-card{
+    position:relative;
+    border:1px solid rgba(120,53,15,0.12);
+    box-shadow: 0 1px 3px rgba(45,45,45,0.04);
+    transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+  }
+  .verse-card:hover{
+    transform: translateY(-4px);
+    box-shadow: 0 18px 32px -12px rgba(120,53,15,0.18);
+    border-color: rgba(120,53,15,0.25);
+  }
+  .verse-card::before{
+    content:"";
+    position:absolute; top:0; left:14px; right:14px; height:3px;
+    background: repeating-linear-gradient(90deg, var(--gold) 0 6px, transparent 6px 12px);
+    opacity:.55;
+  }
+
+  .tag-pill{
+    font-family:'Yatra One', cursive;
+    transition: all .25s ease;
+  }
+  .tag-pill.active{
+    background: var(--accent);
+    color:#fff5e8;
+    box-shadow: 0 6px 14px -4px rgba(120,53,15,0.45);
+  }
+
+  .nav-tab{
+    position:relative;
+    font-family:'Yatra One', cursive;
+    color: var(--ink);
+    opacity:.65;
+    transition: opacity .2s ease, color .2s ease;
+  }
+  .nav-tab.active{ opacity:1; color:var(--accent); }
+  .nav-tab.active::after{
+    content:"";
+    position:absolute; left:0; right:0; bottom:-6px; height:2px;
+    background: var(--accent);
+    border-radius:2px;
+  }
+
+  .heart-btn svg{ transition: transform .25s cubic-bezier(.4,0,.2,1), fill .25s ease; }
+  .heart-btn.liked svg{ fill: var(--maroon-deep); stroke: var(--maroon-deep); transform: scale(1.15); }
+  .heart-btn:active svg{ transform: scale(.85); }
+
+  /* Skeleton shimmer */
+  .skeleton{
+    position:relative; overflow:hidden;
+    background: #eee6d3;
+  }
+  .skeleton::after{
+    content:"";
+    position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+    animation: shimmer 1.4s infinite;
+  }
+  @keyframes shimmer{
+    0%{ transform: translateX(-100%); }
+    100%{ transform: translateX(100%); }
+  }
+
+  .view{ display:none; }
+  .view.active{ display:block; animation: fadeSlide .4s ease; }
+  @keyframes fadeSlide{
+    from{ opacity:0; transform: translateY(8px); }
+    to{ opacity:1; transform: translateY(0); }
+  }
+
+  .modal-backdrop{
+    background: rgba(45,32,20,0.55);
+    backdrop-filter: blur(3px);
+  }
+  .modal-panel{ animation: modalPop .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes modalPop{
+    from{ opacity:0; transform: scale(.92) translateY(10px); }
+    to{ opacity:1; transform: scale(1) translateY(0); }
+  }
+
+  .btn-primary{
+    background: var(--accent);
+    color:#fff5e8;
+    transition: background .2s ease, transform .15s ease, box-shadow .2s ease;
+    box-shadow: 0 8px 18px -8px rgba(120,53,15,0.55);
+  }
+  .btn-primary:hover{ background: var(--accent-light); transform: translateY(-1px); }
+  .btn-primary:disabled{ opacity:.6; cursor:not-allowed; transform:none; }
+
+  input:focus, textarea:focus, select:focus{
+    outline:none;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(120,53,15,0.12);
+  }
+  input, textarea, select{ transition: box-shadow .2s ease, border-color .2s ease; }
+
+  a, button{ -webkit-tap-highlight-color: transparent; }
+  :focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .divider-orn{
+    display:flex; align-items:center; gap:12px; color: var(--gold);
+  }
+  .divider-orn::before, .divider-orn::after{
+    content:""; flex:1; height:1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  .toast{
+    animation: toastIn .35s ease, toastOut .35s ease 2.65s forwards;
+  }
+  @keyframes toastIn{ from{opacity:0; transform:translateY(-12px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes toastOut{ from{opacity:1;} to{opacity:0; transform:translateY(-12px);} }
+
+  .success-checkmark{ animation: popIn .5s cubic-bezier(.34,1.56,.64,1) .1s both; }
+  @keyframes popIn{ from{ transform: scale(0); opacity:0;} to{ transform: scale(1); opacity:1;} }
+
+  .line-clamp-5{
+    display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;
+  }
+
+  .spinner{
+    border: 2.5px solid rgba(255,245,232,0.35);
+    border-top-color:#fff5e8;
+    border-radius:50%;
+    width:18px; height:18px;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ===================== HEADER / NAV ===================== -->
+<header class="sticky top-0 z-40 bg-[var(--canvas)]/90 backdrop-blur-md border-b border-[var(--gold-soft)]">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+    <div class="flex items-baseline gap-3 cursor-pointer" onclick="switchView('home')">
+      <span class="font-logo text-2xl sm:text-3xl text-[var(--accent)] tracking-wide">काव्यानुभूति</span>
+      <span class="font-deco text-lg text-[var(--gold)] hidden sm:inline">Kavyanubhuti</span>
+    </div>
+    <nav class="flex items-center gap-4 sm:gap-8 text-base sm:text-lg">
+      <button class="nav-tab active" data-view="home" onclick="switchView('home')">होम</button>
+      <button class="nav-tab" data-view="dashboard" onclick="switchView('dashboard')">कवि मंच</button>
+      <button class="nav-tab" data-view="admin" onclick="switchView('admin')">एडमिन</button>
+    </nav>
+  </div>
+</header>
+
+<!-- toast container -->
+<div id="toastHost" class="fixed top-20 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center pointer-events-none"></div>
+
+<!-- ===================== HOME VIEW ===================== -->
+<main id="view-home" class="view active">
+
+  <!-- HERO -->
+  <section class="relative overflow-hidden paper-texture">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-14 pb-10 sm:pt-20 sm:pb-14 text-center relative">
+      <svg class="quill-flourish w-14 h-14 mx-auto mb-4 text-[var(--gold)]" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 56C20 40 30 26 50 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M50 8c-2 6-1 10 3 12-4 2-9 1-11-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="9" cy="55" r="2" fill="currentColor"/>
+      </svg>
+      <p class="font-deco text-2xl sm:text-3xl text-[var(--gold)] mb-1">words woven into feeling</p>
+      <h1 class="font-logo text-4xl sm:text-6xl text-[var(--accent)] leading-tight mb-4">जहाँ शब्द भाव बनते हैं</h1>
+      <p class="font-section text-lg sm:text-xl text-[var(--ink)]/70 max-w-2xl mx-auto">
+        नए और स्थापित कवियों की भावनाओं का संग्रह — पढ़िए, महसूस कीजिए, और अपनी रचनाएँ भी प्रकाशित कीजिए
+      </p>
+
+      <!-- Search -->
+      <div class="mt-8 max-w-xl mx-auto relative">
+        <input id="searchInput" type="text" placeholder="कविता, कवि या भाव खोजें..."
+          class="w-full font-verse text-lg px-5 py-3.5 pr-12 rounded-full border border-[var(--gold-soft)] bg-[var(--paper)] shadow-sm focus:shadow-md"
+          oninput="onSearch(this.value)">
+        <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--accent)]/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 10.5A6.5 6.5 0 114 10.5a6.5 6.5 0 0113 0z"/>
+        </svg>
+      </div>
+
+      <!-- Category pills -->
+      <div id="categoryPills" class="mt-6 flex flex-wrap justify-center gap-2 sm:gap-3">
+        <button class="tag-pill active px-4 py-2 rounded-full border border-[var(--gold-soft)] bg-[var(--paper)] text-sm sm:text-base" data-cat="सभी" onclick="setCategory('सभी')">सभी</button>
+        <button class="tag-pill px-4 py-2 rounded-full border border-[var(--gold-soft)] bg-[var(--paper)] text-sm sm:text-base" data-cat="शृंगार/प्रेम" onclick="setCategory('शृंगार/प्रेम')">शृंगार / प्रेम</button>
+        <button class="tag-pill px-4 py-2 rounded-full border border-[var(--gold-soft)] bg-[var(--paper)] text-sm sm:text-base" data-cat="वियोग/दर्द" onclick="setCategory('वियोग/दर्द')">वियोग / दर्द</button>
+        <button class="tag-pill px-4 py-2 rounded-full border border-[var(--gold-soft)] bg-[var(--paper)] text-sm sm:text-base" data-cat="सूफी/भक्ति" onclick="setCategory('सूफी/भक्ति')">सूफी / भक्ति</button>
+        <button class="tag-pill px-4 py-2 rounded-full border border-[var(--gold-soft)] bg-[var(--paper)] text-sm sm:text-base" data-cat="जीवन/दर्शन" onclick="setCategory('जीवन/दर्शन')">जीवन / दर्शन</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider-orn max-w-6xl mx-auto px-4 sm:px-6">
+    <span class="font-deco text-xl px-2">✦</span>
+  </div>
+
+  <!-- POEM GRID -->
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <div id="resultMeta" class="mb-5 font-section text-[var(--ink)]/60 text-sm"></div>
+    <div id="poemGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6"></div>
+    <div id="emptyState" class="hidden text-center py-20">
+      <p class="font-deco text-3xl text-[var(--gold)] mb-2">still quiet here...</p>
+      <p class="font-section text-lg text-[var(--ink)]/60">इस खोज या श्रेणी में अभी कोई कविता उपलब्ध नहीं है</p>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== DASHBOARD VIEW ===================== -->
+<main id="view-dashboard" class="view">
+  <section class="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+
+    <!-- Logged-out: login/register -->
+    <div id="loginBlock" class="bg-[var(--paper)] rounded-2xl border border-[var(--gold-soft)] shadow-sm p-6 sm:p-10 text-center">
+      <p class="font-deco text-2xl text-[var(--gold)] mb-1">enter your world of verse</p>
+      <h2 class="font-logo text-3xl sm:text-4xl text-[var(--accent)] mb-6">कवि मंच में प्रवेश करें</h2>
+      <div class="space-y-4 max-w-sm mx-auto text-left">
+        <div>
+          <label class="font-section text-sm text-[var(--ink)]/70 block mb-1">आपका नाम</label>
+          <input id="loginName" type="text" placeholder="जैसे — मीरा शर्मा" class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)]">
+        </div>
+        <div>
+          <label class="font-section text-sm text-[var(--ink)]/70 block mb-1">ईमेल पता</label>
+          <input id="loginEmail" type="email" placeholder="you@example.com" class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)]">
+        </div>
+        <button onclick="doLogin()" class="btn-primary w-full py-3 rounded-lg font-section text-lg mt-2">सत्र शुरू करें</button>
+        <p id="loginError" class="text-sm text-red-700 hidden"></p>
+      </div>
+    </div>
+
+    <!-- Logged-in: profile + submit form -->
+    <div id="poetPanel" class="hidden">
+      <div class="bg-[var(--paper)] rounded-2xl border border-[var(--gold-soft)] shadow-sm p-6 sm:p-8 mb-8">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <p class="font-deco text-xl text-[var(--gold)]">welcome back, poet</p>
+            <h2 class="font-logo text-2xl sm:text-3xl text-[var(--accent)]" id="profileName"></h2>
+          </div>
+          <button onclick="doLogout()" class="font-section text-sm text-[var(--ink)]/60 hover:text-[var(--accent)] underline">सत्र समाप्त करें</button>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-6">
+          <div class="bg-[var(--canvas)] rounded-xl p-4 text-center border border-[var(--gold-soft)]">
+            <p class="font-logo text-3xl text-[var(--accent)]" id="statPoems">0</p>
+            <p class="font-section text-sm text-[var(--ink)]/60 mt-1">प्रकाशित कविताएँ</p>
+          </div>
+          <div class="bg-[var(--canvas)] rounded-xl p-4 text-center border border-[var(--gold-soft)]">
+            <p class="font-logo text-3xl text-[var(--accent)]" id="statLikes">0</p>
+            <p class="font-section text-sm text-[var(--ink)]/60 mt-1">प्राप्त पसंद</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-[var(--paper)] rounded-2xl border border-[var(--gold-soft)] shadow-sm p-6 sm:p-8">
+        <h3 class="font-section text-2xl text-[var(--accent)] mb-1">कविता पटल</h3>
+        <p class="font-deco text-lg text-[var(--gold)] mb-6">share what your heart has written</p>
+
+        <form id="submitForm" class="space-y-4" onsubmit="submitPoem(event)">
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="font-section text-sm text-[var(--ink)]/70 block mb-1">कवि का नाम</label>
+              <input id="poemAuthor" type="text" required class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)]">
+            </div>
+            <div>
+              <label class="font-section text-sm text-[var(--ink)]/70 block mb-1">ईमेल</label>
+              <input id="poemEmail" type="email" required class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)]">
+            </div>
+          </div>
+          <div>
+            <label class="font-section text-sm text-[var(--ink)]/70 block mb-1">कविता का शीर्षक</label>
+            <input id="poemTitle" type="text" required class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)]">
+          </div>
+          <div>
+            <label class="font-section text-sm text-[var(--ink)]/70 block mb-1">श्रेणी चुनें</label>
+            <select id="poemCategory" required class="w-full font-section px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)]">
+              <option value="">-- चुनें --</option>
+              <option value="शृंगार/प्रेम">शृंगार / प्रेम</option>
+              <option value="वियोग/दर्द">वियोग / दर्द</option>
+              <option value="सूफी/भक्ति">सूफी / भक्ति</option>
+              <option value="जीवन/दर्शन">जीवन / दर्शन</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-section text-sm text-[var(--ink)]/70 block mb-1">कविता लिखें</label>
+            <textarea id="poemContent" required rows="8" placeholder="यहाँ अपने भाव उकेरें..." class="w-full font-verse text-lg px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)]"></textarea>
+          </div>
+          <p id="submitError" class="text-sm text-red-700 hidden"></p>
+          <button id="submitBtn" type="submit" class="btn-primary w-full py-3.5 rounded-lg font-section text-lg flex items-center justify-center gap-2">
+            <span id="submitBtnText">प्रकाशन हेतु भेजें</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== ADMIN VIEW ===================== -->
+<main id="view-admin" class="view">
+  <section class="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+
+    <div id="adminGate" class="bg-[var(--paper)] rounded-2xl border border-[var(--gold-soft)] shadow-sm p-6 sm:p-10 text-center max-w-md mx-auto">
+      <p class="font-deco text-2xl text-[var(--gold)] mb-1">for the keepers of the archive</p>
+      <h2 class="font-logo text-3xl text-[var(--accent)] mb-6">व्यवस्थापक प्रवेश</h2>
+      <input id="adminPass" type="password" placeholder="पासकी दर्ज करें" class="w-full font-body px-4 py-3 rounded-lg border border-[var(--gold-soft)] bg-[var(--canvas)] mb-3" onkeydown="if(event.key==='Enter')adminLogin()">
+      <button onclick="adminLogin()" class="btn-primary w-full py-3 rounded-lg font-section text-lg">प्रवेश करें</button>
+      <p id="adminError" class="text-sm text-red-700 mt-3 hidden">गलत पासकी। पुनः प्रयास करें।</p>
+    </div>
+
+    <div id="adminBoard" class="hidden">
+      <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+        <h2 class="font-section text-2xl sm:text-3xl text-[var(--accent)]">प्रतीक्षारत रचनाएँ</h2>
+        <div class="flex items-center gap-3">
+          <button onclick="fetchPending(true)" class="font-section text-sm text-[var(--ink)]/60 hover:text-[var(--accent)] underline">रिफ्रेश करें</button>
+          <button onclick="adminLogout()" class="font-section text-sm text-[var(--ink)]/60 hover:text-[var(--accent)] underline">लॉग आउट</button>
+        </div>
+      </div>
+      <div id="pendingList" class="space-y-4"></div>
+      <div id="pendingEmpty" class="hidden text-center py-16">
+        <p class="font-deco text-3xl text-[var(--gold)] mb-2">the desk is clear</p>
+        <p class="font-section text-lg text-[var(--ink)]/60">कोई भी रचना समीक्षा हेतु प्रतीक्षारत नहीं है</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== READ MORE MODAL ===================== -->
+<div id="poemModal" class="fixed inset-0 z-[90] hidden items-center justify-center p-4 modal-backdrop" onclick="if(event.target===this)closePoemModal()">
+  <div class="modal-panel bg-[var(--paper)] rounded-2xl max-w-xl w-full max-h-[85vh] overflow-y-auto p-6 sm:p-8 relative">
+    <button onclick="closePoemModal()" class="absolute top-4 right-4 text-[var(--ink)]/50 hover:text-[var(--accent)] text-2xl leading-none">&times;</button>
+    <span id="modalTag" class="inline-block font-section text-xs px-3 py-1 rounded-full bg-[var(--gold-soft)] text-[var(--maroon-deep)] mb-3"></span>
+    <h3 id="modalTitle" class="font-logo text-2xl sm:text-3xl text-[var(--accent)] mb-4"></h3>
+    <p id="modalContent" class="font-verse text-xl leading-relaxed mb-6"></p>
+    <div class="flex items-center justify-between border-t border-[var(--gold-soft)] pt-4">
+      <p class="font-section text-[var(--ink)]/70">— <span id="modalAuthor"></span></p>
+      <p class="font-deco text-lg text-[var(--gold)]" id="modalTime"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SUCCESS MODAL ===================== -->
+<div id="successModal" class="fixed inset-0 z-[95] hidden items-center justify-center p-4 modal-backdrop">
+  <div class="modal-panel bg-[var(--paper)] rounded-2xl max-w-sm w-full p-8 text-center">
+    <div class="success-checkmark w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--accent)] flex items-center justify-center">
+      <svg class="w-8 h-8 text-[#fff5e8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <h3 class="font-logo text-2xl text-[var(--accent)] mb-2">भेज दी गई!</h3>
+    <p class="font-section text-[var(--ink)]/70 mb-6">आपकी कविता समीक्षा हेतु प्रस्तुत कर दी गई है। स्वीकृति के बाद यह होम पृष्ठ पर दिखाई देगी।</p>
+    <button onclick="closeSuccessModal()" class="btn-primary px-8 py-2.5 rounded-lg font-section">ठीक है</button>
+  </div>
+</div>
+
+<footer class="border-t border-[var(--gold-soft)] mt-10 py-8 text-center">
+  <p class="font-deco text-xl text-[var(--gold)]">"शब्द वही जीते हैं, जो भाव बनकर बहते हैं"</p>
+  <p class="font-section text-sm text-[var(--ink)]/50 mt-2">© काव्यानुभूति — Kavyanubhuti</p>
+</footer>
+
+<script>
+/* ============================================================
+   CONFIGURATION
+   Replace with your deployed Google Apps Script Web App URL.
+   The script must implement doGet (action=getPoems / getPending)
+   and doPost (action=submitPoem / updateStatus / toggleLike).
+   ============================================================ */
+const GOOGLE_SCRIPT_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+
+const CACHE_KEY = "kavya_poems_cache";
+const LIKES_KEY = "kavya_liked_ids";
+const USER_KEY = "kavya_poet_session";
+const ADMIN_SESSION_KEY = "kavya_admin_session";
+const ADMIN_PASSKEY = "admin123";
+
+/* ---------------- Global state ---------------- */
+let allPoems = [];          // approved poems (from cache / server)
+let pendingPoems = [];       // poems awaiting approval
+let currentCategory = "सभी";
+let currentQuery = "";
+let currentUser = JSON.parse(localStorage.getItem(USER_KEY) || "null");
+let likedIds = new Set(JSON.parse(localStorage.getItem(LIKES_KEY) || "[]"));
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener("DOMContentLoaded", () => {
+  // 1. Render instantly from cache (or skeleton if empty)
+  const cached = readCache();
+  if (cached && cached.length) {
+    allPoems = cached;
+    renderPoems();
+  } else {
+    renderSkeleton();
+  }
+
+  // 2. Silently refresh from server in the background
+  fetchPoems();
+
+  // 3. Restore poet session UI
+  if (currentUser) showPoetPanel();
+
+  // 4. Restore admin session
+  if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "true") {
+    document.getElementById("adminGate").classList.add("hidden");
+    document.getElementById("adminBoard").classList.remove("hidden");
+    fetchPending();
+  }
+});
+
+/* ============================================================
+   VIEW SWITCHING
+   ============================================================ */
+function switchView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-" + name).classList.add("active");
+  document.querySelectorAll(".nav-tab").forEach(t => t.classList.toggle("active", t.dataset.view === name));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ============================================================
+   LOCAL CACHE HELPERS
+   ============================================================ */
+function readCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function writeCache(data) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+
+/* ============================================================
+   FETCH APPROVED POEMS (background silent refresh)
+   ============================================================ */
+async function fetchPoems() {
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPoems`, { method: "GET" });
+    if (!res.ok) throw new Error("नेटवर्क त्रुटि");
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      allPoems = data;
+      writeCache(data);
+      renderPoems();
+    }
+  } catch (err) {
+    // Silent fail — cached / skeleton UI already visible
+    console.warn("पृष्ठभूमि में डेटा लाने में समस्या:", err.message);
+  }
+}
+
+/* ============================================================
+   RENDERING — POEM GRID
+   ============================================================ */
+function getFiltered() {
+  const q = currentQuery.trim().toLowerCase();
+  return allPoems.filter(p => {
+    const matchesCat = currentCategory === "सभी" || p.category === currentCategory;
+    if (!matchesCat) return false;
+    if (!q) return true;
+    return (p.title || "").toLowerCase().includes(q)
+      || (p.author || "").toLowerCase().includes(q)
+      || (p.category || "").toLowerCase().includes(q);
+  });
+}
+
+function renderSkeleton() {
+  const grid = document.getElementById("poemGrid");
+  grid.innerHTML = Array.from({ length: 6 }).map(() => `
+    <div class="verse-card rounded-2xl bg-[var(--paper)] p-5 h-72">
+      <div class="skeleton h-4 w-20 rounded-full mb-4"></div>
+      <div class="skeleton h-6 w-3/4 rounded mb-4"></div>
+      <div class="skeleton h-4 w-full rounded mb-2"></div>
+      <div class="skeleton h-4 w-5/6 rounded mb-2"></div>
+      <div class="skeleton h-4 w-2/3 rounded mb-6"></div>
+      <div class="skeleton h-4 w-1/3 rounded"></div>
+    </div>
+  `).join("");
+  document.getElementById("resultMeta").textContent = "";
+}
+
+function renderPoems() {
+  const grid = document.getElementById("poemGrid");
+  const empty = document.getElementById("emptyState");
+  const meta = document.getElementById("resultMeta");
+  const list = getFiltered();
+
+  meta.textContent = list.length ? `${list.length} रचनाएँ प्रदर्शित` : "";
+
+  if (!list.length) {
+    grid.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+
+  grid.innerHTML = list.map(p => {
+    const id = p.id;
+    const liked = likedIds.has(String(id));
+    const preview = (p.content || "").length > 160 ? p.content.slice(0, 160) + "…" : p.content;
+    return `
+    <article class="verse-card rounded-2xl bg-[var(--paper)] p-5 flex flex-col">
+      <span class="font-section text-xs px-3 py-1 rounded-full bg-[var(--gold-soft)] text-[var(--maroon-deep)] w-fit mb-3">${escapeHtml(p.category || "")}</span>
+      <h3 class="font-logo text-xl text-[var(--accent)] mb-2 leading-snug">${escapeHtml(p.title || "शीर्षकहीन")}</h3>
+      <p class="font-verse text-lg leading-relaxed text-[var(--ink)]/90 line-clamp-5 flex-1">${escapeHtml(preview)}</p>
+      <button onclick='openPoemModal(${JSON.stringify(id)})' class="font-deco text-lg text-[var(--gold)] hover:text-[var(--accent)] text-left mt-2 w-fit">and read on...</button>
+      <div class="flex items-center justify-between mt-4 pt-4 border-t border-[var(--gold-soft)]">
+        <div>
+          <p class="font-section text-sm text-[var(--ink)]/70">— ${escapeHtml(p.author || "अज्ञात")}</p>
+          <p class="font-deco text-xs text-[var(--gold)] mt-0.5">${formatTime(p.timestamp)}</p>
+        </div>
+        <button class="heart-btn ${liked ? "liked" : ""} flex items-center gap-1.5" onclick='toggleLike(${JSON.stringify(id)}, this)'>
+          <svg class="w-6 h-6 ${liked ? "" : "fill-none"}" stroke="var(--maroon-deep)" stroke-width="1.8" viewBox="0 0 24 24">
+            <path d="M12 21s-7.5-4.7-10-9.3C.3 8 2 4.5 5.6 4.5c2 0 3.5 1.1 4.4 2.7.9-1.6 2.4-2.7 4.4-2.7 3.6 0 5.3 3.5 3.6 7.2C19.5 16.3 12 21 12 21z"/>
+          </svg>
+          <span class="font-section text-sm text-[var(--ink)]/70">${p.likes || 0}</span>
+        </button>
+      </div>
+    </article>`;
+  }).join("");
+}
+
+function escapeHtml(str) {
+  return String(str || "").replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[m]));
+}
+function formatTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (isNaN(d)) return "";
+  return d.toLocaleDateString("hi-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/* ============================================================
+   SEARCH & FILTER
+   ============================================================ */
+let searchDebounce;
+function onSearch(value) {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    currentQuery = value;
+    renderPoems();
+  }, 80); // near-instant, from local cache only
+}
+
+function setCategory(cat) {
+  currentCategory = cat;
+  document.querySelectorAll(".tag-pill").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.cat === cat);
+  });
+  renderPoems();
+}
+
+/* ============================================================
+   POEM MODAL (Read More)
+   ============================================================ */
+function openPoemModal(id) {
+  const poem = allPoems.find(p => String(p.id) === String(id));
+  if (!poem) return;
+  document.getElementById("modalTag").textContent = poem.category || "";
+  document.getElementById("modalTitle").textContent = poem.title || "";
+  document.getElementById("modalContent").textContent = poem.content || "";
+  document.getElementById("modalAuthor").textContent = poem.author || "अज्ञात";
+  document.getElementById("modalTime").textContent = formatTime(poem.timestamp);
+  const modal = document.getElementById("poemModal");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+}
+function closePoemModal() {
+  const modal = document.getElementById("poemModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+}
+
+/* ============================================================
+   LIKE / HEART BUTTON
+   ============================================================ */
+async function toggleLike(id, btnEl) {
+  const key = String(id);
+  const isLiked = likedIds.has(key);
+
+  // Optimistic UI update
+  const poem = allPoems.find(p => String(p.id) === key);
+  if (poem) poem.likes = (poem.likes || 0) + (isLiked ? -1 : 1);
+  if (isLiked) likedIds.delete(key); else likedIds.add(key);
+  localStorage.setItem(LIKES_KEY, JSON.stringify([...likedIds]));
+  writeCache(allPoems);
+  renderPoems();
+
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "toggleLike", id: id, liked: !isLiked })
+    });
+  } catch (err) {
+    console.warn("पसंद अद्यतन करने में त्रुटि:", err.message);
+  }
+}
+
+/* ============================================================
+   POET LOGIN / SESSION
+   ============================================================ */
+function doLogin() {
+  const name = document.getElementById("loginName").value.trim();
+  const email = document.getElementById("loginEmail").value.trim();
+  const errEl = document.getElementById("loginError");
+
+  if (!name || !email || !email.includes("@")) {
+    errEl.textContent = "कृपया सही नाम और ईमेल दर्ज करें।";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  errEl.classList.add("hidden");
+  currentUser = { name, email };
+  localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+  showPoetPanel();
+  showToast("स्वागत है, " + name + "!");
+}
+
+function doLogout() {
+  currentUser = null;
+  localStorage.removeItem(USER_KEY);
+  document.getElementById("poetPanel").classList.add("hidden");
+  document.getElementById("loginBlock").classList.remove("hidden");
+}
+
+function showPoetPanel() {
+  document.getElementById("loginBlock").classList.add("hidden");
+  document.getElementById("poetPanel").classList.remove("hidden");
+  document.getElementById("profileName").textContent = currentUser.name;
+  document.getElementById("poemAuthor").value = currentUser.name;
+  document.getElementById("poemEmail").value = currentUser.email;
+  updateProfileStats();
+}
+
+function updateProfileStats() {
+  if (!currentUser) return;
+  const mine = allPoems.filter(p => (p.email || "").toLowerCase() === currentUser.email.toLowerCase());
+  const totalLikes = mine.reduce((sum, p) => sum + (Number(p.likes) || 0), 0);
+  document.getElementById("statPoems").textContent = mine.length;
+  document.getElementById("statLikes").textContent = totalLikes;
+}
+
+/* ============================================================
+   SUBMIT POEM
+   ============================================================ */
+async function submitPoem(evt) {
+  evt.preventDefault();
+  const author = document.getElementById("poemAuthor").value.trim();
+  const email = document.getElementById("poemEmail").value.trim();
+  const title = document.getElementById("poemTitle").value.trim();
+  const category = document.getElementById("poemCategory").value;
+  const content = document.getElementById("poemContent").value.trim();
+  const errEl = document.getElementById("submitError");
+
+  if (!author || !email || !title || !category || !content) {
+    errEl.textContent = "कृपया सभी फ़ील्ड भरें — कोई भी खाली न छोड़ें।";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  errEl.classList.add("hidden");
+
+  const btn = document.getElementById("submitBtn");
+  const btnText = document.getElementById("submitBtnText");
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner inline-block align-middle"></span> <span class="align-middle">भेजा जा रहा है...</span>';
+
+  const payload = {
+    action: "submitPoem",
+    author, email, title, category, content,
+    timestamp: new Date().toISOString(),
+    status: "Pending",
+    likes: 0
+  };
+
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    document.getElementById("submitForm").reset();
+    document.getElementById("poemAuthor").value = currentUser.name;
+    document.getElementById("poemEmail").value = currentUser.email;
+    openSuccessModal();
+  } catch (err) {
+    errEl.textContent = "भेजने में समस्या हुई। कृपया पुनः प्रयास करें।";
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btnText.textContent = "प्रकाशन हेतु भेजें";
+  }
+}
+
+function openSuccessModal() {
+  const m = document.getElementById("successModal");
+  m.classList.remove("hidden");
+  m.classList.add("flex");
+}
+function closeSuccessModal() {
+  const m = document.getElementById("successModal");
+  m.classList.add("hidden");
+  m.classList.remove("flex");
+}
+
+/* ============================================================
+   ADMIN PANEL
+   ============================================================ */
+function adminLogin() {
+  const val = document.getElementById("adminPass").value;
+  const errEl = document.getElementById("adminError");
+  if (val !== ADMIN_PASSKEY) {
+    errEl.classList.remove("hidden");
+    return;
+  }
+  errEl.classList.add("hidden");
+  sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+  document.getElementById("adminGate").classList.add("hidden");
+  document.getElementById("adminBoard").classList.remove("hidden");
+  fetchPending();
+}
+function adminLogout() {
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  document.getElementById("adminBoard").classList.add("hidden");
+  document.getElementById("adminGate").classList.remove("hidden");
+  document.getElementById("adminPass").value = "";
+}
+
+async function fetchPending(manual) {
+  const list = document.getElementById("pendingList");
+  const emptyEl = document.getElementById("pendingEmpty");
+  if (manual) list.innerHTML = `<p class="font-section text-center text-[var(--ink)]/50 py-8">लोड हो रहा है...</p>`;
+
+  try {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPending`, { method: "GET" });
+    if (!res.ok) throw new Error("नेटवर्क त्रुटि");
+    const data = await res.json();
+    pendingPoems = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.warn("प्रतीक्षारत सूची लाने में त्रुटि:", err.message);
+  }
+  renderPending();
+}
+
+function renderPending() {
+  const list = document.getElementById("pendingList");
+  const emptyEl = document.getElementById("pendingEmpty");
+
+  if (!pendingPoems.length) {
+    list.innerHTML = "";
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+  emptyEl.classList.add("hidden");
+
+  list.innerHTML = pendingPoems.map(p => `
+    <div class="bg-[var(--paper)] rounded-2xl border border-[var(--gold-soft)] p-5 sm:p-6">
+      <div class="flex items-start justify-between gap-3 flex-wrap mb-2">
+        <div>
+          <span class="font-section text-xs px-3 py-1 rounded-full bg-[var(--gold-soft)] text-[var(--maroon-deep)]">${escapeHtml(p.category || "")}</span>
+          <h3 class="font-logo text-xl text-[var(--accent)] mt-2">${escapeHtml(p.title || "")}</h3>
+          <p class="font-section text-sm text-[var(--ink)]/60">${escapeHtml(p.author || "")} · ${escapeHtml(p.email || "")}</p>
+        </div>
+        <p class="font-deco text-sm text-[var(--gold)]">${formatTime(p.timestamp)}</p>
+      </div>
+      <p class="font-verse text-lg leading-relaxed mt-3 mb-4">${escapeHtml(p.content || "")}</p>
+      <div class="flex gap-3">
+        <button onclick='moderatePoem(${JSON.stringify(p.id)}, "Approved", this)' class="flex-1 bg-[var(--accent)] text-[#fff5e8] font-section py-2.5 rounded-lg hover:bg-[var(--accent-light)] transition">स्वीकार करें</button>
+        <button onclick='moderatePoem(${JSON.stringify(p.id)}, "Rejected", this)' class="flex-1 border border-red-800 text-red-800 font-section py-2.5 rounded-lg hover:bg-red-50 transition">हटाएं</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function moderatePoem(id, status, btnEl) {
+  const card = btnEl.closest("div.bg-\\[var\\(--paper\\)\\]");
+  if (card) card.style.opacity = "0.5";
+
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "updateStatus", id, status })
+    });
+
+    // Remove from pending list locally
+    const approvedPoem = pendingPoems.find(p => String(p.id) === String(id));
+    pendingPoems = pendingPoems.filter(p => String(p.id) !== String(id));
+    renderPending();
+
+    // If approved, add to local cache instantly so home reflects it
+    if (status === "Approved" && approvedPoem) {
+      approvedPoem.status = "Approved";
+      allPoems = [approvedPoem, ...allPoems];
+      writeCache(allPoems);
+      renderPoems();
+    }
+    showToast(status === "Approved" ? "रचना स्वीकृत की गई" : "रचना हटा दी गई");
+  } catch (err) {
+    showToast("त्रुटि — पुनः प्रयास करें", true);
+    if (card) card.style.opacity = "1";
+  }
+}
+
+/* ============================================================
+   TOAST NOTIFICATIONS
+   ============================================================ */
+function showToast(msg, isError) {
+  const host = document.getElementById("toastHost");
+  const el = document.createElement("div");
+  el.className = "toast font-section px-5 py-2.5 rounded-full shadow-lg text-sm " +
+    (isError ? "bg-red-800 text-white" : "bg-[var(--accent)] text-[#fff5e8]");
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+</script>
+</body>
+</html>
